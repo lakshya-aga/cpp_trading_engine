@@ -1,0 +1,78 @@
+cmake_minimum_required(VERSION 3.20)
+
+project(OrderMatching CXX)
+
+add_executable(OrderBook main.cpp)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
+
+set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -march=native -DNDEBUG")
+ 
+add_compile_options(-Wall -Wextra -Wpedantic)
+
+set(OB_SANITIZER "address" CACHE STRING "Sanitizer for Debug builds")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT OB_SANITIZER STREQUAL "none")
+  if(OB_SANITIZER STREQUAL "address")
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address,undefined)
+  elseif(OB_SANITIZER STREQUAL "thread")
+    add_compile_options(-fsanitize=thread)
+    add_link_options(-fsanitize=thread)
+  endif()
+endif()
+
+
+find_package(Threads REQUIRED)
+
+add_library(ob
+  src/decoder.cpp
+  src/order_book.cpp
+  src/matcher.cpp
+)
+
+target_include_directories(ob PUBLIC include)
+target_link_libraries(ob PUBLIC Threads::Threads)
+
+add_executable(replay   
+apps/replay.cpp
+)
+add_executable(pipeline 
+apps/pipeline.cpp
+)
+target_link_libraries(replay   PRIVATE ob)
+target_link_libraries(pipeline PRIVATE ob)
+
+
+add_executable(bench_pipeline bench/bench_pipeline.cpp)
+add_executable(bench_ring     bench/bench_ring.cpp)
+target_link_libraries(bench_pipeline PRIVATE ob)
+target_link_libraries(bench_ring     PRIVATE ob)
+
+
+-- Enable testing --
+include(FetchContent)
+FetchContent_Declare(Catch2
+  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+  GIT_TAG        v3.5.2
+)
+FetchContent_MakeAvailable(Catch2)
+ 
+enable_testing()
+add_executable(unit_tests
+  tests/test_matcher.cpp
+  tests/test_order_book.cpp
+  tests/test_spsc_ring.cpp
+)
+target_link_libraries(unit_tests PRIVATE ob Catch2::Catch2WithMain)
+ 
+list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+include(Catch)
+catch_discover_tests(unit_tests)
+ 
