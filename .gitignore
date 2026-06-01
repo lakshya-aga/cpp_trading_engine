@@ -1,1 +1,3 @@
 *.bin
+Launch_bench*
+*.dSYM

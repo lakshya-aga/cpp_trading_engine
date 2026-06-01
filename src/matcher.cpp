@@ -3,6 +3,15 @@
 
 Matcher::Matcher(OrderBook& book) : ob(book) {}
 
+std::vector<Trade> Matcher::apply(const Event& e) {
+    switch(e.type){
+        case MsgType::Add:    return match(e);
+        case MsgType::Cancel: return cancel(e);
+        case MsgType::Modify: return modify(e);
+        default:              return {};
+    }
+}
+
 Trade make_trade(OrderId maker, OrderId taker, Price price, Quantity qty){
     Trade t;
     t.header.type=MsgType::Trade;
@@ -36,8 +45,9 @@ std::vector<Trade> Matcher::match(Event order){
                     ob.orders.erase(existing_order.id);
                     other_side->second.orders.pop_front();
                 }
-
+                
             }
+            if(other_side->second.orders.empty()) ob.asks.erase(other_side);
                 
         }
         break;
@@ -45,7 +55,7 @@ std::vector<Trade> Matcher::match(Event order){
         
         case Side::Sell: 
         while(remaining > 0 && !ob.bids.empty()){
-            auto other_side = ob.bids.begin();
+            auto other_side = std::prev(ob.bids.end());
             if(other_side->first < order.price){
                 break;   
             }
@@ -63,21 +73,24 @@ std::vector<Trade> Matcher::match(Event order){
                     ob.orders.erase(existing_order.id);
                     other_side->second.orders.pop_front();
                 }
-
+                
             }
+            if(other_side->second.orders.empty()) ob.bids.erase(other_side);
         }
         break;
         // return trades;
 
     }
     if(remaining>0){
-        ob.add(Order{order.oid, order.side, order.price, order.qty});
+        ob.add(Order{order.oid, order.side, order.price, remaining});
     }
     return trades;
 }
 std::vector<Trade> Matcher::cancel(Event order){
-
+    ob.cancel(order.oid);
+    return {};                 
 }
 std::vector<Trade> Matcher::modify(Event order){
-
+    ob.cancel(order.oid);      // remove the old resting order so it loses time priority
+    return match(order);       // re-submit through the matching path; may trade or rest
 }
