@@ -58,8 +58,16 @@ xcrun xctrace record --template 'Time Profiler' --launch -- ./bench_prof && open
 
 This will give something like this
 
-![alt text](../Profiler_output.png)
+![alt text](Profiler_output.png)
+
+Instrument also gives us something like this
+![times grouped by function](Heavy_stacks.png)
+
+We will employ this to find optimisations down the line
+
 
 # Second Pass (In progress)
 
 In the second part we will try optimisations and try to beat the performance of the previous design. The metric we would like to measure by is time (and maybe memory? as low memory usage may help us make use of caching more than memory)
+
+First Point fo interest is the operator++ which is essentially pointing to our walk of the PriceLevel List
