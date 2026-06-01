@@ -18,7 +18,11 @@ struct PriceLevel{
     std::list<Order> orders;
     Quantity qty;
 };
-struct IdxEntry { Side side; Price price; };
+struct IdxEntry {
+    Side side; 
+    Price price;
+    std::list<Order>::iterator it;
+ };
 
 class OrderBook{
     public:
