@@ -62,14 +62,16 @@ int main() {
     for (int i = 0; i < WARMUP; ++i) m.apply(events[i]);   // warmup: caches, page faults, deep book
 
     std::vector<uint32_t> lat; lat.reserve(N - WARMUP);
+    auto t0 = Clock::now();
     for (int i = WARMUP; i < N; ++i) {
         // --- swap this block for HdrHistogram + rdtsc for production numbers ---
-        auto t0 = Clock::now();
         m.apply(events[i]);
-        auto t1 = Clock::now();
-        lat.push_back((uint32_t)std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count());
         // ----------------------------------------------------------------------
     }
+    auto t1 = Clock::now();
+    long long total_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
+    double ns_per_op = (double)total_ns / (N - WARMUP);
+    
 
     std::sort(lat.begin(), lat.end());
     double sum = 0; for (uint32_t v : lat) sum += v;

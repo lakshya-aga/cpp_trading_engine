@@ -66,10 +66,16 @@ Instrument also gives us something like this
 We will employ this to find optimisations down the line
 
 
-# Second Pass (In progress)
+# Second Pass -> shaving seconds (In progress)
 
 In the second part we will try optimisations and try to beat the performance of the previous design. The metric we would like to measure by is time (and maybe memory? as low memory usage may help us make use of caching more than memory)
 
 First Point fo interest is the operator++ which is essentially pointing to our walk of the PriceLevel List
 
 So now we will save an interator pointer to the list node as well. This could have potential issues in the form of dangling pointers... let's see if I have to use shared_ptr/unique_ptr/weak_ptr
+
+Special Pointers were not needed as list deletes cleanly.
+
+After making a simple change of less than 5 lines -> linear scan of price level for order ID, saving iterator and using that to delete saves ~46% of the runtime. 
+
+Now that we have exhausted complexity level optimisations, lets move on to C++ and system optimisation
