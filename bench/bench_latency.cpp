@@ -8,14 +8,13 @@
 // Correct but memory-heavy. For the final/production numbers, swap in HdrHistogram
 // (brew install hdrhistogram_c, link -lhdr_histogram) and ideally rdtsc on a
 // frequency-locked machine. See the marked spot below.
+
 #include "decoder.hpp"
 #include "matcher.hpp"
 #include <cstdio>
 #include <vector>
 #include <chrono>
-#include <algorithm>
 #include <random>
-#include <cstdint>
 
 static std::vector<Event> gen_events(int n, unsigned seed) {
     std::mt19937 rng(seed);
@@ -46,44 +45,23 @@ static std::vector<Event> gen_events(int n, unsigned seed) {
 
 using Clock = std::chrono::steady_clock;
 
-static double pct(const std::vector<uint32_t>& sorted, double p) {
-    if (sorted.empty()) return 0;
-    size_t idx = (size_t)(p / 100.0 * (sorted.size() - 1));
-    return sorted[idx];
-}
-
 int main() {
-    const int N = 2'000'000;        // total events
-    const int WARMUP = 200'000;     // untimed warmup
+    const int N = 2'000'000;
+    const int WARMUP = 200'000;
     auto events = gen_events(N, 999);
 
     OrderBook ob; Matcher m(ob);
+    for (int i = 0; i < WARMUP; ++i) m.apply(events[i]);
 
-    for (int i = 0; i < WARMUP; ++i) m.apply(events[i]);   // warmup: caches, page faults, deep book
-
-    std::vector<uint32_t> lat; lat.reserve(N - WARMUP);
+    int ops = N - WARMUP;
     auto t0 = Clock::now();
-    for (int i = WARMUP; i < N; ++i) {
-        // --- swap this block for HdrHistogram + rdtsc for production numbers ---
-        m.apply(events[i]);
-        // ----------------------------------------------------------------------
-    }
+    for (int i = WARMUP; i < N; ++i) m.apply(events[i]);
     auto t1 = Clock::now();
+
     long long total_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
-    double ns_per_op = (double)total_ns / (N - WARMUP);
-    
-
-    std::sort(lat.begin(), lat.end());
-    double sum = 0; for (uint32_t v : lat) sum += v;
-
-    std::printf("samples            : %zu\n", lat.size());
-    std::printf("mean      (ns)     : %.1f\n", sum / lat.size());
-    std::printf("min       (ns)     : %u\n", lat.front());
-    std::printf("p50       (ns)     : %.0f\n", pct(lat, 50));
-    std::printf("p90       (ns)     : %.0f\n", pct(lat, 90));
-    std::printf("p99       (ns)     : %.0f\n", pct(lat, 99));
-    std::printf("p99.9     (ns)     : %.0f\n", pct(lat, 99.9));
-    std::printf("p99.99    (ns)     : %.0f\n", pct(lat, 99.99));
-    std::printf("max       (ns)     : %u\n", lat.back());
+    std::printf("ops          : %d\n", ops);
+    std::printf("total ms     : %.1f\n", total_ns / 1e6);
+    std::printf("ns/op (mean) : %.1f\n", (double)total_ns / ops);
+    std::printf("events/sec   : %.0f\n", ops / (total_ns / 1e9));
     return 0;
 }
