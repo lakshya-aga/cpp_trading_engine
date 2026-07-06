@@ -66,7 +66,7 @@ Instrument also gives us something like this
 We will employ this to find optimisations down the line
 
 
-# Second Pass -> shaving seconds (In progress)
+# Second Pass
 
 In the second part we will try optimisations and try to beat the performance of the previous design. The metric we would like to measure by is time (and maybe memory? as low memory usage may help us make use of caching more than memory)
 
@@ -79,3 +79,7 @@ Special Pointers were not needed as list deletes cleanly.
 After making a simple change of less than 5 lines -> linear scan of price level for order ID, saving iterator and using that to delete saves ~46% of the runtime. 
 
 Now that we have exhausted complexity level optimisations, lets move on to C++ and system optimisation
+
+# Third Phase
+
+In this phase I try to parallelise and improve performance by attempting to separate feed consumption and order matching through multi-threading. I expected the results to be a bit better even though the feed was loaded from memory. ƒor this I used the structure: SPSC ring buffer. The idea is straightforward, there is one thread writing events to the head of the ring and one consuming the events from the tail. On hitting buffer capacity the writer warps back to first position which is hopefully consumed by the consumer by now. However, this was not the case. The performance was significantly worse ~12 times owing to the overhead added due to the cost of atomic operations. However, I would still hope that in real I/O bounded task this busy waiting mechanism can produce a better result per order.
