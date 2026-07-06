@@ -1,3 +1,5 @@
-*.bin
-Launch_bench*
-*.dSYM
+pipeline
+*.o
+bench_*
+build/
+*.trace
