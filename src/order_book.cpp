@@ -11,10 +11,12 @@ bool OrderBook::add(const Order& order){
     if(order.side==Side::Sell)
     {
         asks[order.price].orders.push_back(order);
+        orders[order.id].it = std::prev(asks[order.price].orders.end());
         return true;
     }
     else if(order.side==Side::Buy){
         bids[order.price].orders.push_back(order);
+        orders[order.id].it = std::prev(bids[order.price].orders.end());
         return true;
     }
     return false;
@@ -26,10 +28,10 @@ bool OrderBook::cancel(OrderId oid){
     auto order = idx->second;
     auto& book = order.side == Side::Buy ? bids : asks; // & to reference is crucial, otherwise end up with copies. (sweet java memories)
     auto level = book.find(order.price);
-    // how can i use the modern for loop for this?
-    for(auto it= level->second.orders.begin(); it!=level->second.orders.end(); it++){
-        if(it->id == oid){level->second.orders.erase(it); break;}
-    }
+
+    if(level!=book.end())
+    level->second.orders.erase(orders[oid].it);
+
     if (level->second.orders.empty()) book.erase(level);
     orders.erase(idx);
     return true;
